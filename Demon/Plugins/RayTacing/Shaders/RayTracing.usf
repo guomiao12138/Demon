@@ -1,0 +1,8 @@
+#include "/Engine/Private/Common.ush"
+
+RWTexture2D<float4> OutputSureface;
+
+void MainCS(uint3 ThreadId : SV_DispathThreadID)
+{
+	
+}
