@@ -18,7 +18,7 @@
 		{
 			"Name": "RayTracing",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PostConfigInit"
 		}
 	]
 }

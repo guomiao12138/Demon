@@ -13,13 +13,10 @@ public class RayTracing : ModuleRules
 				// ... add public include paths required here ...
 			}
 			);
-				
-		
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				// ... add other private include paths required here ...
-			}
-			);
+
+			});
 			
 		
 		PublicDependencyModuleNames.AddRange(
@@ -27,6 +24,9 @@ public class RayTracing : ModuleRules
 			{
 				"Core",
 				// ... add other public dependencies that you statically link with here ...
+				"RenderCore",
+				"Renderer",
+				"RHI",
 			}
 			);
 			
@@ -38,6 +38,7 @@ public class RayTracing : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"Projects",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
