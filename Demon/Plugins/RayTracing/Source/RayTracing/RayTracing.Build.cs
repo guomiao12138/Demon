@@ -38,7 +38,6 @@ public class RayTracing : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"Projects",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
