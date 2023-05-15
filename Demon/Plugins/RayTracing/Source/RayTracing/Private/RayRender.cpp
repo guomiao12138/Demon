@@ -3,6 +3,56 @@
 
 #include "RayRender.h"
 
+
+
+class FRayComputeShader : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FRayComputeShader);
+
+public:
+
+	FRayComputeShader() = default;
+	FRayComputeShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+		: FGlobalShader(Initializer)
+	{
+		OutputSurface.Bind(Initializer.ParameterMap, TEXT("OutputSurface"));
+	}
+
+
+	static bool shouldCach(EShaderPlatform Platform)
+	{
+		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parmaters)
+	{
+		return IsFeatureLevelSupported(Parmaters.Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& Environment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters, Environment);
+		Environment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	}
+
+	void SetOutput(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputSurfaceUAV);
+
+	void UnbindBuffers(FRHICommandList& RHICmdList)
+	{
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
+
+		if (OutputSurface.IsBound())
+		{
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, OutputSurface.GetBaseIndex(), nullptr);
+		}
+	}
+
+	LAYOUT_FIELD(FShaderResourceParameter, OutputSurface);
+	//FShaderResourceParameter OutputSurface;
+};
+
+IMPLEMENT_GLOBAL_SHADER(FRayComputeShader, "/Plugin/RayTracing/Private/RayTracing.usf", "MainCS", SF_Compute);
+
 void SaveArrayToTextTure(TArray<FVector4>* BitmapRef, int TexttureSizeX, int TexttureSizeY)
 {
 	TArray<FColor> BitMapToBeSave;
@@ -11,14 +61,22 @@ void SaveArrayToTextTure(TArray<FVector4>* BitmapRef, int TexttureSizeX, int Tex
 	{
 		for (int i = 0; i < TexttureSizeY; i++)
 		{
-			float r = float(i) / float(TexttureSizeX);
-			float g = float(j) / float(TexttureSizeY);
-			float b = 0.2;
+			//float r = float(i) / float(TexttureSizeX);
+			//float g = float(j) / float(TexttureSizeY);
+			//float b = 0.2;
 
-			uint8 cr = 255.99f * r;
-			uint8 cg = 255.99f * g;
-			uint8 cb = 255.99f * b;
-			uint8 ca = 1.0f;
+			//uint8 cr = 255.99f * r;
+			//uint8 cg = 255.99f * g;
+			//uint8 cb = 255.99f * b;
+			//uint8 ca = 1.0f;
+
+			uint8 cr = (*BitmapRef)[i].X;
+			uint8 cg = (*BitmapRef)[i].Y;
+			uint8 cb = (*BitmapRef)[i].Z;
+			uint8 ca = (*BitmapRef)[i].W;
+
+
+
 			BitMapToBeSave.Add(FColor(cr, cg, cb, ca));
 		}
 	}
@@ -50,45 +108,49 @@ static void RayTracing_RenderThread(FRHICommandListImmediate& RHICommandList, ER
 	TArray<FVector4> Bitmap;
 
 	TShaderMapRef<FRayComputeShader> ComputeShader(GetGlobalShaderMap(FeadtureLevel));
-	RHICommandList.SetComputeShader(ComputeShader.GetComputeShader());
-	//SetComputePipelineState(RHICommandList, ComputeShader.GetComputeShader());
+	//RHICommandList.SetComputeShader(ComputeShader.GetComputeShader());
+	SetComputePipelineState(RHICommandList, ComputeShader.GetComputeShader());
 
 
 	int sizeX = 256;
 	int sizeY = 256;
 
-	//FRHIResourceCreateInfo CreateInfo(TEXT("RayTracing_RenderThread"));
-	//FTextureRHIRef Textture = RHICreateTexture(FRHITextureCreateDesc::Create2D(CreateInfo.DebugName)
-	//	.SetExtent((int32)sizeX, (int32)sizeY)
-	//	.SetFormat((EPixelFormat)PF_A32B32G32R32F)
-	//	.SetNumMips((uint8)1)
-	//	.SetNumSamples((uint8)1)
-	//	.SetFlags(TexCreate_Shared | TexCreate_UAV)
-	//	.SetInitialState(ERHIAccess::Unknown)
-	//	.SetExtData(CreateInfo.ExtData)
-	//	.SetBulkData(CreateInfo.BulkData)
-	//	.SetGPUMask(CreateInfo.GPUMask)
-	//	.SetClearValue(CreateInfo.ClearValueBinding));
+	FRHIResourceCreateInfo CreateInfo(TEXT("RayTracing_RenderThread"));
+	FTextureRHIRef Textture = RHICreateTexture(FRHITextureCreateDesc::Create2D(CreateInfo.DebugName)
+		.SetExtent((int32)sizeX, (int32)sizeY)
+		.SetFormat((EPixelFormat)PF_A32B32G32R32F)
+		.SetNumMips((uint8)1)
+		.SetNumSamples((uint8)1)
+		.SetFlags(TexCreate_Shared | TexCreate_UAV)
+		.SetInitialState(ERHIAccess::Unknown)
+		.SetExtData(CreateInfo.ExtData)
+		.SetBulkData(CreateInfo.BulkData)
+		.SetGPUMask(CreateInfo.GPUMask)
+		.SetClearValue(CreateInfo.ClearValueBinding));
 
-	////FTextureRHIRef Textture = RHICreateTexture2D(sizeX, sizeY, PF_A32B32G32R32F, 1, 1, TexCreate_Shared | TexCreate_UAV, CreateInfo);
+	//FTextureRHIRef Textture = RHICreateTexture2D(sizeX, sizeY, PF_A32B32G32R32F, 1, 1, TexCreate_Shared | TexCreate_UAV, CreateInfo);
 
-	//FUnorderedAccessViewRHIRef TextureUAV = RHICreateUnorderedAccessView(Textture);
-	//ComputeShader->SetOutput(RHICommandList, TextureUAV);
-	//DispatchComputeShader(RHICommandList, ComputeShader, sizeX / 32, sizeY / 32, 1);
-	//ComputeShader->UnbindBuffers(RHICommandList);
+	FUnorderedAccessViewRHIRef TextureUAV = RHICreateUnorderedAccessView(Textture);
+	ComputeShader->SetOutput(RHICommandList, TextureUAV);
+	DispatchComputeShader(RHICommandList, ComputeShader, sizeX / 32, sizeY / 32, 1);
+	ComputeShader->UnbindBuffers(RHICommandList);
 
-	//Bitmap.Init(FVector4(1.0f, 0.0f, 0.0f, 1.0f), sizeX * sizeY);
+	Bitmap.Init(FVector4(1.0f, 0.0f, 0.0f, 1.0f), sizeX * sizeY);
 
-	//uint32 LolStride = 0;
-	//uint8* TexttureDataPtr = (uint8*)RHICommandList.LockTexture2D(Textture, 0, EResourceLockMode::RLM_ReadOnly, LolStride, true);
-	//uint8* ArrayData = (uint8*)Bitmap.GetData();
+	uint32 LolStride = 0;
+	uint8* TexttureDataPtr = (uint8*)RHICommandList.LockTexture2D(Textture, 0, EResourceLockMode::RLM_ReadOnly, LolStride, true);
+	uint8* ArrayData = (uint8*)Bitmap.GetData();
 
-	//FMemory::Memcpy(ArrayData, TexttureDataPtr, sizeX * sizeY);
-	//RHICommandList.UnlockTexture2D(Textture, 0, false);
+	FMemory::Memcpy(ArrayData, TexttureDataPtr, sizeX * sizeY);
+	RHICommandList.UnlockTexture2D(Textture, 0, false);
 
 	SaveArrayToTextTure(&Bitmap, sizeX, sizeY);
 }
 
+void FRayComputeShader::SetOutput(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputSurfaceUAV)
+{
+	RHICmdList.SetUAVParameter(RHICmdList.GetBoundComputeShader(), OutputSurface.GetBaseIndex(), OutputSurfaceUAV);
+}
 
 void ARayRender::MainRayRender()
 {
